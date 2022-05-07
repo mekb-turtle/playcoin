@@ -40,6 +40,9 @@ GRAPHICS	:=	gfx
 GFXBUILD	:=	$(BUILD)
 #ROMFS		:=	romfs
 #GFXBUILD	:=	$(ROMFS)/gfx
+APP_TITLE       := Play Coin Setter
+APP_DESCRIPTION := Simple tool to set amount of Play Coins
+APP_AUTHOR      := mekb-turtle
 
 #---------------------------------------------------------------------------------
 # options for code generation

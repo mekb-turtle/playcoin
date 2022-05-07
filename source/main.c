@@ -9,13 +9,22 @@
 #define MIN_PC 0
 #define MAX_PC 300
 #define LEN_PC 6
-#define RED     "\x1b[1;31m"
-#define GREEN   "\x1b[1;32m"
-#define YELLOW  "\x1b[1;33m"
-#define BLUE    "\x1b[1;34m"
-#define MAGENTA "\x1b[1;35m"
-#define CYAN    "\x1b[1;36m"
-#define RESET   "\x1b[0m"
+#define BLACK        "\x1b[2;30m"
+#define DARK_RED     "\x1b[2;31m"
+#define DARK_GREEN   "\x1b[2;32m"
+#define DARK_YELLOW  "\x1b[2;33m"
+#define DARK_BLUE    "\x1b[2;34m"
+#define DARK_MAGENTA "\x1b[2;35m"
+#define DARK_CYAN    "\x1b[2;36m"
+#define GRAY         "\x1b[2;37m"
+#define DARK_GRAY    "\x1b[1;30m"
+#define RED          "\x1b[1;31m"
+#define GREEN        "\x1b[1;32m"
+#define YELLOW       "\x1b[1;33m"
+#define BLUE         "\x1b[1;34m"
+#define MAGENTA      "\x1b[1;35m"
+#define CYAN         "\x1b[1;36m"
+#define RESET        "\x1b[0m"
 u8 *fb;
 Result readgamecoin() {
 	memset(fb, 0, FB_SIZE);
@@ -133,12 +142,10 @@ int main(int argc, char* argv[]) {
 					}
 				}
 			} else a = true;
-			u16 pc1 = pc_ == MAX_PC ? MIN_PC : MAX_PC;
-			//pc_ < ((MAX_PC-MIN_PC)>>1) + MIN_PC ? MAX_PC : MIN_PC;
 			if (a && (kDown & KEY_A || kDown & KEY_X)) {
 				if (kDown & KEY_X) {
 					change = true;
-					pc_ = pc1;
+					pc_ = pc_ == MAX_PC ? MIN_PC : MAX_PC;
 				}
 				if (pc_ != pc) {
 					change = true;
@@ -148,17 +155,17 @@ int main(int argc, char* argv[]) {
 			if (change) {
 				change = false;
 				consoleClear();
-				printf("Current Play Coins: %s%i%s\n", CYAN, pc, RESET);
-				printf("    New Play Coins: %s%i%s\n\n", CYAN, pc_, RESET);
-				printf("%s    A%s = Set Play Coins\n", RED, RESET);
-				printf("%s    B%s = Revert\n", YELLOW, RESET);
-				printf("%s    Y%s = System Number Selection\n", GREEN, RESET);
-				printf("%s    X%s = Set to %i\n", BLUE, RESET, pc1);
-				printf("Start = Exit\n");
-				printf(" Down = -1\n");
-				printf("   Up = +1\n");
-				printf(" Left = -25\n");
-				printf("Right = +25\n");
+				printf("Current Play Coins%s: %s%i%s\n", DARK_GRAY, CYAN, pc, RESET);
+				printf("    New Play Coins%s: %s%i%s\n\n", DARK_GRAY, CYAN, pc_, RESET);
+				printf("%s    A%s = %sSet Play Coins\n", RED, DARK_GRAY, RESET);
+				printf("%s    B%s = %sRevert\n", YELLOW, DARK_GRAY, RESET);
+				printf("%s    Y%s = %sSystem Number Selection\n", GREEN, DARK_GRAY, RESET);
+				printf("%s    X%s = %sSet to %i\n", BLUE, DARK_GRAY, RESET, pc_ == MAX_PC ? MIN_PC : MAX_PC);
+				printf("Start%s = %sExit\n", DARK_GRAY, RESET);
+				printf("   Up%s = %s+1%s\n", DARK_GRAY, GREEN, RESET);
+				printf(" Down%s = %s-1%s\n", DARK_GRAY, RED, RESET);
+				printf("Right%s = %s+25%s\n", DARK_GRAY, GREEN, RESET);
+				printf(" Left%s = %s-25%s\n", DARK_GRAY, RED, RESET);
 			}
 		}
 	}
