@@ -38,11 +38,12 @@ DATA		:=	data
 INCLUDES	:=	include
 GRAPHICS	:=	gfx
 GFXBUILD	:=	$(BUILD)
+RESDIR		:=  $(TOPDIR)/resources
 #ROMFS		:=	romfs
 #GFXBUILD	:=	$(ROMFS)/gfx
-APP_TITLE       := Play Coin Setter
-APP_DESCRIPTION := Simple tool to set amount of Play Coins
-APP_AUTHOR      := mekb-turtle
+APP_TITLE		:= Play Coin Setter
+APP_DESCRIPTION	:= Tool to set amount of Play Coins
+APP_AUTHOR		:= mekb-turtle
 
 #---------------------------------------------------------------------------------
 # options for code generation
@@ -107,19 +108,6 @@ else
 endif
 #---------------------------------------------------------------------------------
 
-#---------------------------------------------------------------------------------
-ifeq ($(GFXBUILD),$(BUILD))
-#---------------------------------------------------------------------------------
-export T3XFILES :=  $(GFXFILES:.t3s=.t3x)
-#---------------------------------------------------------------------------------
-else
-#---------------------------------------------------------------------------------
-export ROMFS_T3XFILES	:=	$(patsubst %.t3s, $(GFXBUILD)/%.t3x, $(GFXFILES))
-export T3XHFILES		:=	$(patsubst %.t3s, $(BUILD)/%.h, $(GFXFILES))
-#---------------------------------------------------------------------------------
-endif
-#---------------------------------------------------------------------------------
-
 export OFILES_SOURCES 	:=	$(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o)
 
 export OFILES_BIN	:=	$(addsuffix .o,$(BINFILES)) \
@@ -167,6 +155,9 @@ endif
 all: clean $(BUILD) $(GFXBUILD) $(DEPSDIR) $(ROMFS_T3XFILES) $(T3XHFILES)
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
+cia: all
+	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile $(OUTPUT).cia
+
 $(BUILD):
 	@mkdir -p $@
 
@@ -183,13 +174,7 @@ endif
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(TARGET).3dsx $(OUTPUT).smdh $(TARGET).elf $(GFXBUILD)
-
-#---------------------------------------------------------------------------------
-$(GFXBUILD)/%.t3x	$(BUILD)/%.h	:	%.t3s
-#---------------------------------------------------------------------------------
-	@echo $(notdir $<)
-	@tex3ds -i $< -H $(BUILD)/$*.h -d $(DEPSDIR)/$*.d -o $(GFXBUILD)/$*.t3x
+	@rm -fr $(BUILD) $(TARGET).3dsx $(OUTPUT).cia $(OUTPUT).smdh $(TARGET).elf $(TARGET)_stripped.elf $(GFXBUILD)
 
 #---------------------------------------------------------------------------------
 else
@@ -203,6 +188,13 @@ $(OFILES_SOURCES) : $(HFILES)
 
 $(OUTPUT).elf	:	$(OFILES)
 
+$(OUTPUT).cia   :   $(OUTPUT).elf
+	@cp $(OUTPUT).elf $(TARGET)_stripped.elf
+	$(PREFIX)strip $(TARGET)_stripped.elf
+	bannertool makebanner -ci $(RESDIR)/banner.cgfx -a $(RESDIR)/audio.wav -o banner.bnr
+	bannertool makesmdh -i $(RESDIR)/icon.png -s "$(APP_TITLE)" -l "$(APP_DESCRIPTION)" -p "$(APP_AUTHOR)" -o icon.icn
+	makerom -f cia -o $(OUTPUT).cia -rsf $(RESDIR)/app.rsf -target t -exefslogo -elf $(TARGET)_stripped.elf -icon icon.icn -banner banner.bnr -DAPP_TITLE="$(APP_TITLE)" -DAPP_PRODUCT_CODE="PCST" -DAPP_UNIQUE_ID="PLCSET" -DAPP_SYSTEM_MODE="64MB" -DAPP_SYSTEM_MODE_EXT="LEGACY" -DAPP_CATEGORY="Application" -DAPP_USE_ON_SD="true" -DAPP_MEMORY_TYPE="Application" -DAPP_CPU_SPEED="268MHz" -DAPP_ENABLE_L2_CACHE="false" -DAPP_VERSION_MAJOR="1" -DAPP_ENCRYPTED="false" #-DAPP_ROMFS="$(ROMFS)"
+
 #---------------------------------------------------------------------------------
 # you need a rule like this for each extension you use as binary data
 #---------------------------------------------------------------------------------
@@ -210,46 +202,6 @@ $(OUTPUT).elf	:	$(OFILES)
 #---------------------------------------------------------------------------------
 	@echo $(notdir $<)
 	@$(bin2o)
-
-#---------------------------------------------------------------------------------
-.PRECIOUS	:	%.t3x
-#---------------------------------------------------------------------------------
-%.t3x.o	%_t3x.h :	%.t3x
-#---------------------------------------------------------------------------------
-	@echo $(notdir $<)
-	@$(bin2o)
-
-#---------------------------------------------------------------------------------
-# rules for assembling GPU shaders
-#---------------------------------------------------------------------------------
-define shader-as
-	$(eval CURBIN := $*.shbin)
-	$(eval DEPSFILE := $(DEPSDIR)/$*.shbin.d)
-	echo "$(CURBIN).o: $< $1" > $(DEPSFILE)
-	echo "extern const u8" `(echo $(CURBIN) | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`"_end[];" > `(echo $(CURBIN) | tr . _)`.h
-	echo "extern const u8" `(echo $(CURBIN) | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`"[];" >> `(echo $(CURBIN) | tr . _)`.h
-	echo "extern const u32" `(echo $(CURBIN) | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`_size";" >> `(echo $(CURBIN) | tr . _)`.h
-	picasso -o $(CURBIN) $1
-	bin2s $(CURBIN) | $(AS) -o $*.shbin.o
-endef
-
-%.shbin.o %_shbin.h : %.v.pica %.g.pica
-	@echo $(notdir $^)
-	@$(call shader-as,$^)
-
-%.shbin.o %_shbin.h : %.v.pica
-	@echo $(notdir $<)
-	@$(call shader-as,$<)
-
-%.shbin.o %_shbin.h : %.shlist
-	@echo $(notdir $<)
-	@$(call shader-as,$(foreach file,$(shell cat $<),$(dir $<)$(file)))
-
-#---------------------------------------------------------------------------------
-%.t3x	%.h	:	%.t3s
-#---------------------------------------------------------------------------------
-	@echo $(notdir $<)
-	@tex3ds -i $< -H $*.h -d $*.d -o $*.t3x
 
 -include $(DEPSDIR)/*.d
 
