@@ -89,61 +89,93 @@ int main(int argc, char* argv[]) {
 		pc_ = pc;
 		if (pc == 0xffff) success = false;
 	}
+	bool kDOWN  = false;
+	bool kUP    = false;
+	bool kLEFT  = false;
+	bool kRIGHT = false;
+	bool rDOWN  = false;
+	bool rUP    = false;
+	bool rLEFT  = false;
+	bool rRIGHT = false;
+	u8 cDOWN  = 0;
+	u8 cUP    = 0;
+	u8 cLEFT  = 0;
+	u8 cRIGHT = 0;
 	while (aptMainLoop()) {
 		gspWaitForVBlank();
 		gfxSwapBuffers();
 		hidScanInput();
 		u32 kDown = hidKeysDown();
+		u32 kHeld = hidKeysHeld();
+		u32 kUp   = hidKeysUp();
 		if (kDown & KEY_START) {
 			consoleClear();
 			break;
 		}
 		if (success) {
+			bool b = true;
+#define CLEAR(k) (k&KEY_DOWN?1:0)+(k&KEY_UP?1:0)+(k&KEY_LEFT?1:0)+(k&KEY_RIGHT?1:0)>1
+			if (CLEAR(kHeld)) kDOWN=kUP=kLEFT=kRIGHT=false;
+			if (CLEAR(kDown)) b = kDOWN=kUP=kLEFT=kRIGHT=false;
+#undef CLEAR
+			if (b) {
+#define SET(k, K) (kUp&K ? false : kDown&K ? true : k)
+				kDOWN  = SET(kDOWN , KEY_DOWN );
+				kUP    = SET(kUP   , KEY_UP   );
+				kLEFT  = SET(kLEFT , KEY_LEFT );
+				kRIGHT = SET(kRIGHT, KEY_RIGHT);
+#undef SET
+#define REPEAT_AT 40
+#define REPEAT_TO 30
+			if (kDOWN ) { if (++cDOWN  >= REPEAT_AT) { cDOWN  = REPEAT_TO; rDOWN  = true; }} else { cDOWN  = 0; rDOWN  = false; }
+			if (kUP   ) { if (++cUP    >= REPEAT_AT) { cUP    = REPEAT_TO; rUP    = true; }} else { cUP    = 0; rUP    = false; }
+			if (kLEFT ) { if (++cLEFT  >= REPEAT_AT) { cLEFT  = REPEAT_TO; rLEFT  = true; }} else { cLEFT  = 0; rLEFT  = false; }
+			if (kRIGHT) { if (++cRIGHT >= REPEAT_AT) { cRIGHT = REPEAT_TO; rRIGHT = true; }} else { cRIGHT = 0; rRIGHT = false; }
 #define DECREASE(x) { change = true; pc_ = pc_ > MIN_PC + x ? pc_ - x : MIN_PC; }
 #define INCREASE(x) { change = true; pc_ = pc_ < MAX_PC - x ? pc_ + x : MAX_PC; }
-			if (kDown & KEY_DOWN ) DECREASE(1);
-			if (kDown & KEY_UP   ) INCREASE(1);
-			if (kDown & KEY_LEFT ) DECREASE(25);
-			if (kDown & KEY_RIGHT) INCREASE(25);
-			bool a = false;
+#define DOWN(c, r) (r ? c == REPEAT_TO : c == 2)
+			if (DOWN(cDOWN , rDOWN )) DECREASE(1);
+			if (DOWN(cUP   , rUP   )) INCREASE(1);
+			if (DOWN(cLEFT , rLEFT )) DECREASE(25);
+			if (DOWN(cRIGHT, rRIGHT)) INCREASE(25);
+#undef REPEAT_AT
+#undef REPEAT_TO
+#undef DECREASE
+#undef INCREASE
+			}
 			if (change) {
 			} else if (kDown & KEY_B) {
 				if (pc_ != pc) {
 					change = true;
 					pc_ = pc;
 				}
-			} else if (kDown & KEY_Y) {
-				SwkbdState sw;
-				swkbdInit(&sw, SWKBD_TYPE_NUMPAD, 2, 3);
-				swkbdSetFeatures(&sw, SWKBD_FIXED_WIDTH | SWKBD_DARKEN_TOP_SCREEN
-					| SWKBD_ALLOW_HOME | SWKBD_ALLOW_RESET | SWKBD_ALLOW_POWER);
-				swkbdSetValidation(&sw, SWKBD_NOTBLANK_NOTEMPTY, 0, 0);
-				swkbdSetButton(&sw, SWKBD_BUTTON_LEFT, "Cancel", false);
-				swkbdSetButton(&sw, SWKBD_BUTTON_RIGHT, "OK", true);
-				char* t = malloc(LEN_PC);
-				char* t_ = malloc(LEN_PC);
-				sprintf(t_, "%i", pc_);
-				swkbdSetInitialText(&sw, t_);
-				swkbdSetHintText(&sw, t_);
-				swkbdSetFilterCallback(&sw, swCb, NULL);
-				SwkbdButton button = SWKBD_BUTTON_NONE;
-				button = swkbdInputText(&sw, t, LEN_PC);
-				if (button == SWKBD_BUTTON_RIGHT) {
-					if (swkbdGetResult(&sw) == SWKBD_D1_CLICK1) {
-						u8 v = atoi(t) & 0xffff;
-						if (pc_ != v) {
-							change = true;
-							pc_ = v;
-						}
-						if (pc_ != pc) {
-							change = true;
-							if (setcoins(pc_) == 0) pc = v;
+			} else if (kDown & KEY_Y || kDown & KEY_A || kDown & KEY_X) {
+				if (kDown & KEY_Y) {
+					SwkbdState sw;
+					swkbdInit(&sw, SWKBD_TYPE_NUMPAD, 2, 3);
+					swkbdSetFeatures(&sw, SWKBD_FIXED_WIDTH | SWKBD_DARKEN_TOP_SCREEN
+						| SWKBD_ALLOW_HOME | SWKBD_ALLOW_RESET | SWKBD_ALLOW_POWER);
+					swkbdSetValidation(&sw, SWKBD_NOTBLANK_NOTEMPTY, 0, 0);
+					swkbdSetButton(&sw, SWKBD_BUTTON_LEFT, "Cancel", false);
+					swkbdSetButton(&sw, SWKBD_BUTTON_RIGHT, "OK", true);
+					char* t = malloc(LEN_PC);
+					char* t_ = malloc(LEN_PC);
+					sprintf(t_, "%i", pc_);
+					swkbdSetInitialText(&sw, t_);
+					swkbdSetHintText(&sw, t_);
+					swkbdSetFilterCallback(&sw, swCb, NULL);
+					SwkbdButton button = SWKBD_BUTTON_NONE;
+					button = swkbdInputText(&sw, t, LEN_PC);
+					if (button == SWKBD_BUTTON_RIGHT) {
+						if (swkbdGetResult(&sw) == SWKBD_D1_CLICK1) {
+							u8 v = atoi(t) & 0xffff;
+							if (pc_ != v) {
+								change = true;
+								pc_ = v;
+							}
 						}
 					}
-				}
-			} else a = true;
-			if (a && (kDown & KEY_A || kDown & KEY_X)) {
-				if (kDown & KEY_X) {
+				} else if (kDown & KEY_X) {
 					change = true;
 					pc_ = pc_ == MAX_PC ? MIN_PC : MAX_PC;
 				}
